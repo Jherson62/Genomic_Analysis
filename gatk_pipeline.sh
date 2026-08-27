@@ -8,9 +8,9 @@ source "$HOME/miniconda3/etc/profile.d/conda.sh"
 
 
 # Directories
-sample="PacienteX"
-quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
-recursos="$HOME/Documentos/Fertility/Exomas/recursos/" # Resources
+sample="EX2601"
+# quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
+resources="$HOME/Documentos/Fertility/Exomas/resources/" # Resources
 data="$HOME/Documentos/Fertility/Exomas/${sample}/data" # Paciente data
 aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
 results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
@@ -24,7 +24,7 @@ echo " Map to reference using BWA-MEM"
 echo "---------------------------------------"
 
 bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
-    "${recursos}"/Homo_sapiens_assembly38.fasta \
+    "${resources}"/Homo_sapiens_assembly38.fasta \
     "${data}"/${sample}_1.fastq.gz \
     "${data}"/${sample}_2.fastq.gz > "${aligned}"/${sample}.paired.sam
 
@@ -42,7 +42,7 @@ gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" MarkDuplicatesSp
 gatk SetNmMdAndUqTags \
     -I "${aligned}"/${sample}_sort_dedup.bam \
     -O "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta
+    -R "${resources}"/Homo_sapiens_assembly38.fasta
 
 echo "------------------------------------"
 echo "Base Quality Score Recalibration ..."
@@ -51,14 +51,14 @@ echo "------------------------------------"
 # make a math model
  gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" BaseRecalibrator \
     -I "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta \
-    --known-sites "${recursos}"/Homo_sapiens_assembly38.dbsnp138.vcf \
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
+    --known-sites "${resources}"/Homo_sapiens_assembly38.dbsnp138.vcf \
     -O "${data}"/recal_data.table
 
 # apply the math model
 gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" ApplyBQSR \
     -I "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta \
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
     --bqsr-recal-file "${data}"/recal_data.table \
     -O "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam
 
@@ -67,7 +67,7 @@ echo "Collect Alignment & Insert Size Metrics ..."
 echo "-------------------------------------------"
 
 gatk CollectAlignmentSummaryMetrics \
-    R="${recursos}"/Homo_sapiens_assembly38.fasta \
+    R="${resources}"/Homo_sapiens_assembly38.fasta \
     I="${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
     O="${aligned}"/alignment_metrics.txt
 
@@ -84,10 +84,10 @@ echo "--------------------"
 
 # Call Variants . . .
 gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" HaplotypeCaller \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta \
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
     -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
     -O "${results}"/raw_variants.vcf \
-    -L "${recursos}"/cromosomas_principales.list
+    -L "${resources}"/cromosomas_principales.list
 
 
 echo "-----------------"
@@ -95,14 +95,14 @@ echo "Separate SNPs ..."
 echo "-----------------"
 
 gatk SelectVariants \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta \
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
     -V "${results}"/raw_variants.vcf \
     --select-type SNP \
     -O "${results}"/raw_snps.vcf
 
 # Filter SNPs
 gatk VariantFiltration \
-	-R "${recursos}"/Homo_sapiens_assembly38.fasta \
+	-R "${resources}"/Homo_sapiens_assembly38.fasta \
 	-V "${results}"/raw_snps.vcf \
 	-O "${results}"/filtered_snps.vcf \
 	-filter-name "QD_filter" -filter "QD < 2.0" \
@@ -127,14 +127,14 @@ echo "Separate INDELs ..."
 echo "-----------------"
 
 gatk SelectVariants \
-    -R "${recursos}"/Homo_sapiens_assembly38.fasta \
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
     -V "${results}"/raw_variants.vcf \
     --select-type INDEL \
     -O "${results}"/raw_indels.vcf
 
 # Filter INDELs
 gatk VariantFiltration \
-	-R "${recursos}"/Homo_sapiens_assembly38.fasta \
+	-R "${resources}"/Homo_sapiens_assembly38.fasta \
 	-V "${results}"/raw_indels.vcf \
 	-O "${results}"/filtered_indels.vcf \
 	-filter-name "QD_filter" -filter "QD < 2.0" \
