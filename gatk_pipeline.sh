@@ -6,27 +6,36 @@ set -eou pipefail
 # shellcheck disable=SC1091
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 
+sample="EX2601"
 
 # Directories
-sample="EX2601"
-# quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
-resources="$HOME/Documentos/Fertility/Exomas/resources/" # Resources
+quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
+resources="$HOME/Documentos/Fertility/Exomas/resources" # Resources
 data="$HOME/Documentos/Fertility/Exomas/${sample}/data" # Paciente data
 aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
 results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
 
+# create directory if necessary
+mkdir -p "$quality" "$aligned" "$results"
 
 # Enviroment 1: BWA
-conda activate NGStools
+# conda activate NGStools
 
-echo "---------------------------------------"
-echo " Map to reference using BWA-MEM"
-echo "---------------------------------------"
+# echo "----------------"
+# echo " Quality Control"
+# echo "----------------"
 
-bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
-    "${resources}"/Homo_sapiens_assembly38.fasta \
-    "${data}"/${sample}_1.fastq.gz \
-    "${data}"/${sample}_2.fastq.gz > "${aligned}"/${sample}.paired.sam
+# fastqc "${data}"/* -o "${quality}"
+# multiqc "${quality}" -o "${quality}" --force
+
+# echo "---------------------------------------"
+# echo " Map to reference using BWA-MEM"
+# echo "---------------------------------------"
+
+# bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
+#     "${resources}"/Homo_sapiens_assembly38.fasta \
+#     "${data}"/${sample}.cleaned_1.fastq.gz \
+#     "${data}"/${sample}.cleaned_2.fastq.gz > "${aligned}"/${sample}_paired.sam
 
 # Enviroment 2: GATK
 conda activate gatk_env
