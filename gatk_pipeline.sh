@@ -19,25 +19,25 @@ results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
 mkdir -p "$quality" "$aligned" "$results"
 
 # Enviroment 1: BWA
-# conda activate NGStools
+conda activate NGStools
 
-# echo "----------------"
-# echo " Quality Control"
-# echo "----------------"
+echo "----------------"
+echo " Quality Control"
+echo "----------------"
 
-# fastqc "${data}"/* -o "${quality}"
-# multiqc "${quality}" -o "${quality}" --force
+fastqc "${data}"/* -o "${quality}"
+multiqc "${quality}" -o "${quality}" --force
 
-# echo "---------------------------------------"
-# echo " Map to reference using BWA-MEM"
-# echo "---------------------------------------"
+echo "---------------------------------------"
+echo " Map to reference using BWA-MEM"
+echo "---------------------------------------"
 
-# bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
-#     "${resources}"/Homo_sapiens_assembly38.fasta \
-#     "${data}"/${sample}.cleaned_1.fastq.gz \
-#     "${data}"/${sample}.cleaned_2.fastq.gz > "${aligned}"/${sample}_paired.sam
+bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
+    "${resources}"/Homo_sapiens_assembly38.fasta \
+    "${data}"/${sample}.cleaned_1.fastq.gz \
+    "${data}"/${sample}.cleaned_2.fastq.gz > "${aligned}"/${sample}_paired.sam
 
-# Enviroment 2: GATK
+Enviroment 2: GATK
 conda activate gatk_env
 
 echo "------------------------------------"
