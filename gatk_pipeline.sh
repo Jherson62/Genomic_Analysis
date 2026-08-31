@@ -6,7 +6,7 @@ set -eou pipefail
 # shellcheck disable=SC1091
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 
-sample="EX2601"
+sample="EX2603"
 
 # Directories
 quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
@@ -35,17 +35,18 @@ echo "---------------------------------------"
 bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
     "${resources}"/Homo_sapiens_assembly38.fasta \
     "${data}"/${sample}.cleaned_1.fastq.gz \
-    "${data}"/${sample}.cleaned_2.fastq.gz > "${aligned}"/${sample}_paired.sam
+    "${data}"/${sample}.cleaned_2.fastq.gz | \
+samtools sort -@ 4 -o "${aligned}"/${sample}_paired.bam
 
-Enviroment 2: GATK
+#Enviroment 2: GATK
 conda activate gatk_env
 
 echo "------------------------------------"
 echo "Mark Duplicates and add Tags ..."
 echo "------------------------------------"
 
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" MarkDuplicatesSpark \
-    -I "${aligned}"/${sample}_paired.sam \
+gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" MarkDuplicatesSpark \
+    -I "${aligned}"/${sample}_paired.bam \
     -O "${aligned}"/${sample}_sort_dedup.bam
 
 gatk SetNmMdAndUqTags \
@@ -58,14 +59,14 @@ echo "Base Quality Score Recalibration ..."
 echo "------------------------------------"
 
 # make a math model
- gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" BaseRecalibrator \
+ gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" BaseRecalibrator \
     -I "${aligned}"/${sample}_sort_dedup_tag.bam \
     -R "${resources}"/Homo_sapiens_assembly38.fasta \
     --known-sites "${resources}"/Homo_sapiens_assembly38.dbsnp138.vcf \
     -O "${data}"/recal_data.table
 
 # apply the math model
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" ApplyBQSR \
+gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" ApplyBQSR \
     -I "${aligned}"/${sample}_sort_dedup_tag.bam \
     -R "${resources}"/Homo_sapiens_assembly38.fasta \
     --bqsr-recal-file "${data}"/recal_data.table \
@@ -75,16 +76,17 @@ echo "-------------------------------------------"
 echo "Collect Alignment & Insert Size Metrics ..."
 echo "-------------------------------------------"
 
+
 gatk CollectAlignmentSummaryMetrics \
-    R="${resources}"/Homo_sapiens_assembly38.fasta \
-    I="${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
-    O="${aligned}"/alignment_metrics.txt
+    -R "${resources}"/Homo_sapiens_assembly38.fasta \
+    -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
+    -O "${aligned}"/alignment_metrics.txt
 
 
 gatk CollectInsertSizeMetrics \
-    INPUT="${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
-    OUTPUT="${aligned}"/insert_size_metrics.txt \
-    HISTOGRAM_FILE="${aligned}"/insert_size_histogram.pdf
+    -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
+    -O "${aligned}"/insert_size_metrics.txt \
+    -H "${aligned}"/insert_size_histogram.pdf
 
 
 echo "--------------------"
@@ -92,7 +94,7 @@ echo "HaplotypeCaller ..."
 echo "--------------------"
 
 # Call Variants . . .
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseStringDeduplication" HaplotypeCaller \
+gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" HaplotypeCaller \
     -R "${resources}"/Homo_sapiens_assembly38.fasta \
     -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
     -O "${results}"/raw_variants.vcf \
@@ -168,4 +170,4 @@ echo "--------------"
 gatk MergeVcfs \
     -I "${results}"/filtered_snps.vcf \
     -I "${results}"/filtered_indels.vcf \
-    -O "${results}"/merge_to_exomiser_FINAL.vcf
+    -O "${results}"/merge_to_exomiser_FINAL_${sample}.vcf
