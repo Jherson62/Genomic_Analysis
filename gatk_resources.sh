@@ -21,6 +21,9 @@ conda activate NGStools
 # Human references fasta file
 wget -nc -P "${recursos}" "https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
 
+# Remove innecesary information from headers
+sed -i "/^>/ s/ .*$//" Homo_sapiens_assembly38.fasta
+
 # Indexing references genome to alignment
 echo "-------------"
 echo "bwa index ..."
