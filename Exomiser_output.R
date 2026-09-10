@@ -194,7 +194,8 @@ data <- fromJSON(
   flatten = TRUE
 )
 
-str(data)
+# DRUG METABOLISM RELATED'S GENES
+
 
 
 
