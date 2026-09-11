@@ -6,17 +6,27 @@ set -eou pipefail
 # shellcheck disable=SC1091
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 
-sample="EX2603"
+for i in $(seq -w 1 4); do
+
+sample="EX260${i}"
 
 # Directories
+data="$HOME/Documentos/Fertility/Exomas/${sample}/data"
 quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
-resources="$HOME/Documentos/Fertility/Exomas/resources" # Resources
-data="$HOME/Documentos/Fertility/Exomas/${sample}/data" # Paciente data
+resources="$HOME/Documentos/Fertility/Exomas/resources"
 aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
 results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
+stats_vcf="${results}/stats_vcf"
 
 # create directory if necessary
-mkdir -p "$quality" "$aligned" "$results"
+mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf"
+
+# Files
+ref="${resources}/Homo_sapiens_assembly38.fasta"
+snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
+
+# Java options
+JAVA_OPTS="-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication"
 
 # Enviroment 1: BWA
 conda activate NGStools
@@ -33,10 +43,10 @@ echo " Map to reference using BWA-MEM"
 echo "---------------------------------------"
 
 bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
-    "${resources}"/Homo_sapiens_assembly38.fasta \
-    "${data}"/${sample}.cleaned_1.fastq.gz \
-    "${data}"/${sample}.cleaned_2.fastq.gz | \
-samtools sort -@ 4 -o "${aligned}"/${sample}_paired.bam
+    "${ref}" \
+    "${data}/${sample}.cleaned_1.fastq.gz" \
+    "${data}/${sample}.cleaned_2.fastq.gz" | \
+samtools sort -@ 4 -o "${aligned}/${sample}_paired.bam"
 
 #Enviroment 2: GATK
 conda activate gatk_env
@@ -45,60 +55,60 @@ echo "------------------------------------"
 echo "Mark Duplicates and add Tags ..."
 echo "------------------------------------"
 
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" MarkDuplicatesSpark \
-    -I "${aligned}"/${sample}_paired.bam \
-    -O "${aligned}"/${sample}_sort_dedup.bam
+gatk --java-options "${JAVA_OPTS}" MarkDuplicatesSpark \
+    -I "${aligned}/${sample}_paired.bam" \
+    -O "${aligned}/${sample}_sort_dedup.bam"
 
 gatk SetNmMdAndUqTags \
-    -I "${aligned}"/${sample}_sort_dedup.bam \
-    -O "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta
+    -I "${aligned}/${sample}_sort_dedup.bam" \
+    -O "${aligned}/${sample}_sort_dedup_tag.bam" \
+    -R "${ref}"
 
 echo "------------------------------------"
 echo "Base Quality Score Recalibration ..."
 echo "------------------------------------"
 
 # make a math model
- gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" BaseRecalibrator \
-    -I "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    --known-sites "${resources}"/Homo_sapiens_assembly38.dbsnp138.vcf \
-    -O "${data}"/recal_data.table
+ gatk --java-options "${JAVA_OPTS}" BaseRecalibrator \
+    -I "${aligned}/${sample}_sort_dedup_tag.bam" \
+    -R "${ref}" \
+    --known-sites "${snpdb}" \
+    -O "${data}/recal_data.table"
 
 # apply the math model
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" ApplyBQSR \
-    -I "${aligned}"/${sample}_sort_dedup_tag.bam \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    --bqsr-recal-file "${data}"/recal_data.table \
-    -O "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam
+gatk --java-options "${JAVA_OPTS}" ApplyBQSR \
+    -I "${aligned}/${sample}_sort_dedup_tag.bam" \
+    -R "${ref}" \
+    --bqsr-recal-file "${data}/recal_data.table" \
+    -O "${aligned}/${sample}_sort_dedup_tag_bqsr.bam"
 
 echo "-------------------------------------------"
 echo "Collect Alignment & Insert Size Metrics ..."
 echo "-------------------------------------------"
 
 
-gatk CollectAlignmentSummaryMetrics \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
-    -O "${aligned}"/alignment_metrics.txt
+gatk --java-options "${JAVA_OPTS}" CollectAlignmentSummaryMetrics \
+    -R "${ref}" \
+    -I "${aligned}/${sample}_sort_dedup_tag_bqsr.bam" \
+    -O "${aligned}/alignment_metrics.txt"
 
 
-gatk CollectInsertSizeMetrics \
-    -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
-    -O "${aligned}"/insert_size_metrics.txt \
-    -H "${aligned}"/insert_size_histogram.pdf
+gatk --java-options "${JAVA_OPTS}" CollectInsertSizeMetrics \
+    -I "${aligned}/${sample}_sort_dedup_tag_bqsr.bam" \
+    -O "${aligned}/insert_size_metrics.txt" \
+    -H "${aligned}/insert_size_histogram.pdf"
 
 
-echo "--------------------"
+echo "-------------------"
 echo "HaplotypeCaller ..."
-echo "--------------------"
+echo "-------------------"
 
 # Call Variants . . .
-gatk --java-options "-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication" HaplotypeCaller \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    -I "${aligned}"/${sample}_sort_dedup_tag_bqsr.bam \
-    -O "${results}"/raw_variants.vcf \
-    -L "${resources}"/cromosomas_principales.list
+gatk --java-options "${JAVA_OPTS}" HaplotypeCaller \
+    -R "${ref}" \
+    -I "${aligned}/${sample}_sort_dedup_tag_bqsr.bam" \
+    -O "${results}/raw_variants.vcf" \
+    -L "${resources}/cromosomas_principales.list"
 
 
 echo "-----------------"
@@ -106,16 +116,16 @@ echo "Separate SNPs ..."
 echo "-----------------"
 
 gatk SelectVariants \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    -V "${results}"/raw_variants.vcf \
+    -R "${ref}" \
+    -V "${results}/raw_variants.vcf" \
     --select-type SNP \
-    -O "${results}"/raw_snps.vcf
+    -O "${results}/raw_snps.vcf"
 
 # Filter SNPs
 gatk VariantFiltration \
-	-R "${resources}"/Homo_sapiens_assembly38.fasta \
-	-V "${results}"/raw_snps.vcf \
-	-O "${results}"/filtered_snps.vcf \
+	-R "${ref}" \
+	-V "${results}/raw_snps.vcf" \
+	-O "${results}/filtered_snps.vcf" \
 	-filter-name "QD_filter" -filter "QD < 2.0" \
 	-filter-name "FS_filter" -filter "FS > 60.0" \
 	-filter-name "MQ_filter" -filter "MQ < 40.0" \
@@ -133,21 +143,21 @@ gatk VariantFiltration \
 # 	-V "${results}"/filtered_snps.vcf \
 # 	-O "${results}"/analysis_ready_snps.vcf
 
-echo "-----------------"
+echo "-------------------"
 echo "Separate INDELs ..."
-echo "-----------------"
+echo "-------------------"
 
 gatk SelectVariants \
-    -R "${resources}"/Homo_sapiens_assembly38.fasta \
-    -V "${results}"/raw_variants.vcf \
+    -R "${ref}" \
+    -V "${results}/raw_variants.vcf" \
     --select-type INDEL \
-    -O "${results}"/raw_indels.vcf
+    -O "${results}/raw_indels.vcf"
 
 # Filter INDELs
 gatk VariantFiltration \
-	-R "${resources}"/Homo_sapiens_assembly38.fasta \
-	-V "${results}"/raw_indels.vcf \
-	-O "${results}"/filtered_indels.vcf \
+	-R "${ref}" \
+	-V "${results}/raw_indels.vcf" \
+	-O "${results}/filtered_indels.vcf" \
 	-filter-name "QD_filter" -filter "QD < 2.0" \
 	-filter-name "FS_filter" -filter "FS > 200.0" \
 	-filter-name "SOR_filter" -filter "SOR > 10.0" \
@@ -168,6 +178,27 @@ echo "--------------"
 
 # File for Exomiser! 
 gatk MergeVcfs \
-    -I "${results}"/filtered_snps.vcf \
-    -I "${results}"/filtered_indels.vcf \
-    -O "${results}"/merge_to_exomiser_FINAL_${sample}.vcf
+    -I "${results}/filtered_snps.vcf" \
+    -I "${results}/filtered_indels.vcf" \
+    -O "${results}/merge_to_exomiser_FINAL_${sample}.vcf"
+
+
+echo "------------------------"
+echo "Annotation with GATK ..."
+echo "------------------------"
+
+# This part is just to get metrics of SNPS/INDELS
+
+gatk --java-options "${JAVA_OPTS}" VariantAnnotator \
+    -R "${ref}" \
+    -V "${results}/merge_to_exomiser_FINAL_${sample}.vcf" \
+    --dbsnp "${snpdb}" \
+    -O "${results}/merge_annotated_${sample}.vcf"
+
+bcftools view -H -f PASS -i 'ID!="."' "${results}/merge_annotated_${sample}.vcf" | \
+    wc -l > "${stats_vcf}/reporte_SNPs_INDELs.txt"
+
+bcftools stats -s - "${results}/merge_to_exomiser_FINAL_${sample}.vcf" > \
+    "${stats_vcf}/all_stats${sample}.vchk"
+
+plot-vcfstats -p "${stats_vcf}" "${stats_vcf}/all_stats${sample}.vchk"; done 
