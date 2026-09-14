@@ -58,7 +58,7 @@ echo "--------------------------"
 echo "Download SNPs Data Base..."
 echo "--------------------------"
 
-wget -nc -P "${recursos}" "https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
+wget -nc -P "${recursos}" "https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
 
 gatk IndexFeatureFile -I "${recursos}/Homo_sapiens_assembly38.dbsnp138.vcf"
 

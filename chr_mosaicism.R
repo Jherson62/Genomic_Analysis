@@ -2,19 +2,20 @@ library(readxl)
 library(tidyverse)
 library(karyoploteR)
 
-setwd()
-getwd()
+setwd("Documentos/Fertility/RUN41/")
 
 data_bins_chr <- read.table(
-  "RUN40/karyos/QDNAseq_bins_results.tsv",
+  "karios/QDNAseq_bins_results.tsv",
   sep = "\t", header = TRUE
 )
+
+dim(data_bins_chr)
 
 view(karyoPlot)
 
 karyoPlot <- data_bins_chr %>%
   pivot_longer(
-    cols = 6:29,
+    cols = 6:24,
     names_to = "Barcode",
     values_to = "Bins"
   ) %>%
@@ -26,8 +27,6 @@ karyoPlot <- data_bins_chr %>%
     mean_bins = mean(bins, na.rm = TRUE),
     .groups = "drop"
   )
-
-tail(karyo_wide)
 
 karyo_wide <- karyoPlot %>%
   pivot_wider(
@@ -44,7 +43,7 @@ karyo_wide <- karyo_wide %>%
   ) %>%
   arrange(chromosome)
 
-openxlsx::write.xlsx(karyo_wide, "RUN40/RUN40_mosaico.xlsx")
+openxlsx::write.xlsx(karyo_wide, "RUN41_mosaico.xlsx")
 
 mydata <- toGRanges(data.frame(
   chr = paste0("chr", karyoPlot$chromosome),
