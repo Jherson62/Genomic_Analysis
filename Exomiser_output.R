@@ -4,7 +4,7 @@ library(tidyverse)
 setwd("/home/jherson/Documentos/Fertility/Exomas/exomiser_result")
 
 ###################
-id <- "EX2603"
+id <- "EX2604"
 ###################
 
 genes <- read.table(
@@ -195,9 +195,39 @@ data <- fromJSON(
 )
 
 # DRUG METABOLISM RELATED'S GENES
+genes_alter <- map_dfr(
+  data$genes, function(gene_info) {
+    
+    # Caracteristicas de los genes
+    gen <- gene_info$geneSymbol
+    chr <- gene_info$chr
+    fenotipo <- unlist(gene_info$sourceDiplotypes$phenotypes)
+    variante <- gene_info$variants$dbSnpId
+    drogas <- paste(gene_info$relatedDrugs$name, collapse = "\t")
+    
+    # Devolver como fila de tabla (data frame)
+    tibble(
+      gene = gen,
+      phenotype = fenotipo,
+      Drugs = drogas,
+      chr = chr
+    )
+  }
+)
 
+genes_alter_select <- genes_alter |> 
+  filter(
+    phenotype %in% c("Decreased Function",
+                     "Intermediate Metabolizer",
+                     "Likely Intermediate Metabolizer",
+                     "Likely Poor Metabolizer",
+                     "Poor Metabolizer")
+  ) |> 
+  group_by(gene) |> 
+  filter(!duplicated(phenotype)) |> 
+  ungroup()
 
-
-
-
+tabla <- genes_alter[genes_alter$gene == "ABCG2", ]
+table(tabla$phenotype)
+ 
 

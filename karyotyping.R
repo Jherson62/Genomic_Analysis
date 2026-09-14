@@ -14,8 +14,8 @@ library(Biobase)
 library(QDNAseq.hg19)
 
 setwd("/home/jherson/Documentos/Fertility/")
-bam_folder <- "RUN40/"
-output_dir <- "RUN40/karyos/"
+bam_folder <- "RUN41/"
+output_dir <- "RUN41/karios/"
 bin_size <- 1000   # 1 Mb bins
 
 bamfiles <- list.files(

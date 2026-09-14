@@ -53,4 +53,13 @@ gatk CreateSequenceDictionary \
     R="${recursos}/Homo_sapiens_assembly38.fasta" \
     O="${recursos}/Homo_sapiens_assembly38.dict"
 
+
+echo "--------------------------"
+echo "Download SNPs Data Base..."
+echo "--------------------------"
+
+wget -nc -P "${recursos}" "https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf"
+
+gatk IndexFeatureFile -I "${recursos}/Homo_sapiens_assembly38.dbsnp138.vcf"
+
 echo "Finished"
