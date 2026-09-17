@@ -1,2 +1,10 @@
 # Ignore all about VSCode configuration
 .vscode/
+
+# Ignore R configuration/history
+.Rproj
+.Rproj.user
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata

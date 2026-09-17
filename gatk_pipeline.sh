@@ -17,16 +17,17 @@ resources="$HOME/Documentos/Fertility/Exomas/resources"
 aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
 results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
 stats_vcf="${results}/stats_vcf"
+tmp_dir="$HOME/Documentos/Fertility/Exomas/${sample}/tmp_dir"
 
 # create directory if necessary
-mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf"
+mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf" "$tmp_dir"
 
 # Files
 ref="${resources}/Homo_sapiens_assembly38.fasta"
 snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
 
 # Java options
-JAVA_OPTS="-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication"
+JAVA_OPTS="-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication -Djava.io.tmpdir=${tmp_dir}"
 
 # Enviroment 1: BWA
 conda activate NGStools
@@ -57,7 +58,9 @@ echo "------------------------------------"
 
 gatk --java-options "${JAVA_OPTS}" MarkDuplicatesSpark \
     -I "${aligned}/${sample}_paired.bam" \
-    -O "${aligned}/${sample}_sort_dedup.bam"
+    -O "${aligned}/${sample}_sort_dedup.bam" \
+    --temp-dir "${tmp_dir}" \
+    --spark-master "local[8]" #local threads 
 
 gatk SetNmMdAndUqTags \
     -I "${aligned}/${sample}_sort_dedup.bam" \
@@ -180,7 +183,7 @@ echo "--------------"
 gatk MergeVcfs \
     -I "${results}/filtered_snps.vcf" \
     -I "${results}/filtered_indels.vcf" \
-    -O "${results}/merge_to_exomiser_FINAL_${sample}.vcf"
+    -O "${results}/merge_${sample}.vcf"
 
 
 echo "------------------------"
@@ -191,14 +194,14 @@ echo "------------------------"
 
 gatk --java-options "${JAVA_OPTS}" VariantAnnotator \
     -R "${ref}" \
-    -V "${results}/merge_to_exomiser_FINAL_${sample}.vcf" \
+    -V "${results}/merge_${sample}.vcf" \
     --dbsnp "${snpdb}" \
     -O "${results}/merge_annotated_${sample}.vcf"
 
 bcftools view -H -f PASS -i 'ID!="."' "${results}/merge_annotated_${sample}.vcf" | \
     wc -l > "${stats_vcf}/reporte_SNPs_INDELs.txt"
 
-bcftools stats -s - "${results}/merge_to_exomiser_FINAL_${sample}.vcf" > \
+bcftools stats -s - "${results}/merge_${sample}.vcf" > \
     "${stats_vcf}/all_stats${sample}.vchk"
 
 plot-vcfstats -p "${stats_vcf}" "${stats_vcf}/all_stats${sample}.vchk"; done 

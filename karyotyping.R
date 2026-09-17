@@ -4,9 +4,9 @@
 # Genoma: hg19
 ############################################################
 
-# BiocManager::install("QDNAseq") #nolint
-# BiocManager::install("Biobase") #nolint
-# BiocManager::install("QDNAseq.hg19") #nolint
+# BiocManager::install("QDNAseq")
+# BiocManager::install("Biobase")
+# BiocManager::install("QDNAseq.hg19")
 
 rm(list = ls())
 
@@ -15,9 +15,10 @@ library(Biobase)
 library(QDNAseq.hg19)
 
 setwd("/home/jherson/Documentos/Fertility/")
-bam_folder <- "RUN41/"
-output_dir <- "RUN41/karios/"
-bin_size <- 1000   # 1 Mb bins
+
+bam_folder <- "RUN41"
+output_dir <- "RUN41/karios"
+bin_size <- 1000   # 1 Mb bins (1000kb)
 
 bamfiles <- list.files(
   path = bam_folder,
@@ -26,6 +27,8 @@ bamfiles <- list.files(
 )
 
 sample_names <- gsub(".bam", "", basename(bamfiles))
+
+cat("======== SAMPLES  ========")
 cat(sample_names, sep = "\n")
 
 bins <- getBinAnnotations(
@@ -42,23 +45,22 @@ read_counts <- binReadCounts(
 sampleNames(read_counts) <- sample_names
 
 # Raw copy number profile
-#plot(
+# plot(
 #  read_counts,
 #  main = "1 kbp bins",
 #  logTransform = FALSE,
 #  ylim = c(-50, 200)
-#)
+# )
 
-#highlightFilters(
+# highlightFilters(
 #  read_counts,
 #  logTransform = FALSE,
 #  residual = TRUE,
 #  blacklist = TRUE
-#)
+# )
 
-############################################################
-# 5️⃣ Filtrado y correcciones
-############################################################
+
+# Filtrado y correcciones -------------------------------------------------
 
 read_counts <- applyFilters(
   read_counts
@@ -80,9 +82,7 @@ read_counts <- correctBins(read_counts)
 read_counts <- normalizeBins(read_counts)
 copy_numbers_smooth <- smoothOutlierBins(read_counts)
 
-############################################################
-# 6️⃣ Segmentación
-############################################################
+# Segmentación ------------------------------------------------------------
 
 copy_numbers_segmented <- segmentBins(
   copy_numbers_smooth,
@@ -93,9 +93,8 @@ copy_numbers_segmented <- normalizeSegmentedBins(
   copy_numbers_segmented
 )
 
-############################################################
-# 7️⃣ Llamado de CNVs
-############################################################
+
+# Llamado de CNVs ---------------------------------------------------------
 
 copy_numbers_called <- callBins(
   copy_numbers_segmented,
@@ -111,9 +110,9 @@ copy_numbers_called <- callBins(
   )
 )
 
-############################################################
-# 8️⃣ Análisis por muestra (sexo, MAPD, aneuploidías)
-############################################################
+
+# Análisis por muestra ----------------------------------------------------
+# Sexo, MAPD, Aneuploidia
 
 summary_table <- data.frame()
 
