@@ -3,8 +3,13 @@
 set -eou pipefail
 
 # Conda initialize
-# shellcheck disable=SC1091
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
+
+resources="$HOME/Documentos/Fertility/Exomas/resources"
+
+# Files
+ref="${resources}/Homo_sapiens_assembly38.fasta"
+snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
 
 for i in $(seq -w 1 4); do
 
@@ -13,7 +18,6 @@ sample="EX260${i}"
 # Directories
 data="$HOME/Documentos/Fertility/Exomas/${sample}/data"
 quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
-resources="$HOME/Documentos/Fertility/Exomas/resources"
 aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
 results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
 stats_vcf="${results}/stats_vcf"
@@ -21,10 +25,6 @@ tmp_dir="$HOME/Documentos/Fertility/Exomas/${sample}/tmp_dir"
 
 # create directory if necessary
 mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf" "$tmp_dir"
-
-# Files
-ref="${resources}/Homo_sapiens_assembly38.fasta"
-snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
 
 # Java options
 JAVA_OPTS="-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication -Djava.io.tmpdir=${tmp_dir}"
@@ -36,8 +36,8 @@ echo "----------------"
 echo " Quality Control"
 echo "----------------"
 
-fastqc "${data}"/* -o "${quality}"
-multiqc "${quality}" -o "${quality}" --force
+fastqc "${data}/${sample}.cleaned_1.fastq.gz"/* -o "${quality}"
+fastqc "${data}/${sample}.cleaned_2.fastq.gz"/* -o "${quality}"
 
 echo "---------------------------------------"
 echo " Map to reference using BWA-MEM"
