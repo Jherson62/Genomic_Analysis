@@ -1,4 +1,6 @@
-# PROYECTO LONGEVIDAD (LIFESPAN)
+# ANALISIS GENÓMICOS
+
+## PROYECTO LONGEVIDAD (LIFESPAN)
 
 La longevidad es un rasgo complejo, muchos genes interactúan para brindarte la información fenotípica
 por esta razón, se utilizará un Poligenic Score. Se toma una lista de variantes a los que se les asigna
@@ -8,7 +10,7 @@ un "peso" o tamaño de efecto y se suma para analizar su predisposición genéti
   Se encuentra los datos descargados de la pagina [PGS Catalog](https://www.pgscatalog.org/)
 *  Script: **life_span.R**
 
-## Primer intento 
+### Primer intento 
 Polygenic Score ID: [PGS000906](https://www.pgscatalog.org/score/PGS000906/)
 
 - Rasgo para la determinación de la esperanza de vida
@@ -34,12 +36,12 @@ hablamos de población Peruana por ejemplo.
 
 
 
-# PROYECTO TRISOMIA EN EXOMAS
+## PROYECTO TRISOMIA EN EXOMAS
 objetivo: Analizar si con exomas puedo tener información sobre trisomia o monosomia del crh22.
 
-# DORADO BASECALLER
+## DORADO BASECALLER
 
-## METILACIÓN
+### METILACIÓN
 Un archivo POD5 almacena la señal eléctrica cruda de la secuenciación. Para obtener los datos de
 modificaciones, dorado analiza la señal eléctrica utilizando un modelo de redes neuronales diferentes
 al convencional.
