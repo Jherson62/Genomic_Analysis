@@ -1,14 +1,12 @@
 ## Exomiser Analysis Template.
-# These are all the possible options for running exomiser. Use this as a template for
-# your own set-up.
+
 ---
 analysis:
-  # hg19 or hg38 - ensure that the application has been configured to run the specified assembly otherwise it will halt.
   genomeAssembly: hg38
-  vcf: /home/gseq/exomiser-cli-15.1.0/examples/to_exomiser/merge_to_exomiser_FINAL_EX2602.vcf
+  vcf: /home/gseq/Documents/Exomas/GEN2600/results/merge_to_exomiser_FINAL_GEN2600.vcf
   ped:
-  proband: EX2602
-  hpoIds: [ 'HP:0001156', 'HP:0001363', 'HP:0011304', 'HP:0010055' ]
+  proband: GEN2600
+  # hpoIds: [ ]
   # These are the default settings, with values representing the maximum minor allele frequency in percent (%) permitted for an
   # allele to be considered as a causative candidate under that mode of inheritance.
   # If you just want to analyse a sample under a single inheritance mode, delete/comment-out the others. For AUTOSOMAL_RECESSIVE
@@ -55,16 +53,16 @@ analysis:
   # REMM is trained on non-coding regulatory regions
   # *WARNING* if you enable CADD or REMM ensure that you have downloaded and installed the CADD/REMM tabix files
   # and updated their location in the application.properties. Exomiser will not run without this.
-  pathogenicitySources: [ REVEL, MVP, ALPHA_MISSENSE, SPLICE_AI, CADD, REMM ]
+  pathogenicitySources: [ REVEL, MVP, ALPHA_MISSENSE, SPLICE_AI, CADD, REMM]
+  
   # this is the recommended order for a genome-sized analysis.
-  # all steps are optional
   steps: [
-    hiPhivePrioritiser: { },
+    #hiPhivePrioritiser: { },
     #running the prioritiser followed by a priorityScoreFilter will remove genes
     #which are least likely to contribute to the phenotype defined in hpoIds, this will
     #dramatically reduce the time and memory required to analyse a genome.
     # 0.501 is a good compromise to select good phenotype matches and the best protein-protein interactions hits from hiPhive
-    priorityScoreFilter: { priorityType: HIPHIVE_PRIORITY, minPriorityScore: 0.501 },
+    #priorityScoreFilter: { priorityType: HIPHIVE_PRIORITY, minPriorityScore: 0.501 },
     geneBlacklistFilter: { },
     failedVariantFilter: { },
     alleleBalanceFilter: { },
@@ -99,8 +97,8 @@ outputOptions:
   #numGenes options: 0 = all or specify a limit e.g. 500 for the first 500 results
   numGenes: 0
   # Path to the desired output directory. Will default to the 'results' subdirectory of the exomiser install directory
-  #outputDirectory: results
+  outputDirectory: /home/gseq/Documents/Exomas/GEN2600_out
   # Filename for the output files. Will default to {input-vcf-filename}-exomiser
-  outputFileName: test3_rem_cadd
+  outputFileName: GEN2600_output
   #out-format options: HTML, JSON, TSV_GENE, TSV_VARIANT, VCF (default: HTML)
-  outputFormats: [ HTML, JSON, TSV_GENE, TSV_VARIANT, VCF, PARQUET ]
+  outputFormats: [ HTML, TSV_VARIANT, VCF, PARQUET ]
