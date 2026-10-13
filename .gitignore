@@ -8,3 +8,10 @@
 .Rapp.history
 .RData
 .Ruserdata
+
+# Logs y temporales
+*.log
+*.out
+*.err
+.DS_Store
+Thumbs.db

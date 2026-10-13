@@ -3,31 +3,33 @@
 set -eou pipefail
 
 # Conda initialize
-source "$HOME/miniconda3/etc/profile.d/conda.sh"
+# shellcheck disable=SC1091
+source "$HOME/anaconda3/etc/profile.d/conda.sh"
 
-resources="$HOME/Documentos/Fertility/Exomas/resources"
+# for i in $(seq -w 4 4); do
+
+sample="GEN2600"
+
+# Directories
+data="$HOME/Documents/Exomas/${sample}/data"
+quality="$HOME/Documents/Exomas/${sample}/quality"
+resources="$HOME/Documents/Exomas/recursos"
+aligned="$HOME/Documents/Exomas/${sample}/aligned"
+results="$HOME/Documents/Exomas/${sample}/results"
+stats_vcf="${results}/stats_vcf"
+
+# temporal directory
+tmp_dir="$HOME/Documents/Exomas/${sample}/tmp"
+
+# create directory if necessary
+mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf" "$tmp_dir"
 
 # Files
 ref="${resources}/Homo_sapiens_assembly38.fasta"
 snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
 
-for i in $(seq -w 1 4); do
-
-sample="EX260${i}"
-
-# Directories
-data="$HOME/Documentos/Fertility/Exomas/${sample}/data"
-quality="$HOME/Documentos/Fertility/Exomas/${sample}/quality"
-aligned="$HOME/Documentos/Fertility/Exomas/${sample}/aligned"
-results="$HOME/Documentos/Fertility/Exomas/${sample}/results"
-stats_vcf="${results}/stats_vcf"
-tmp_dir="$HOME/Documentos/Fertility/Exomas/${sample}/tmp_dir"
-
-# create directory if necessary
-mkdir -p "$quality" "$aligned" "$results" "$data" "$stats_vcf" "$tmp_dir"
-
 # Java options
-JAVA_OPTS="-Xms8G -Xmx8G -XX:+UseG1GC -XX:+UseStringDeduplication -Djava.io.tmpdir=${tmp_dir}"
+JAVA_OPTS="-Xms22G -Xmx22G -XX:+UseG1GC -XX:+UseStringDeduplication -Djava.io.tmpdir=${tmp_dir}"
 
 # Enviroment 1: BWA
 conda activate NGStools
@@ -36,18 +38,17 @@ echo "----------------"
 echo " Quality Control"
 echo "----------------"
 
-fastqc "${data}/${sample}.cleaned_1.fastq.gz"/* -o "${quality}"
-fastqc "${data}/${sample}.cleaned_2.fastq.gz"/* -o "${quality}"
+#fastqc "${data}"/* -o "${quality}"
 
 echo "---------------------------------------"
 echo " Map to reference using BWA-MEM"
 echo "---------------------------------------"
 
-bwa mem -t 8 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
+bwa mem -t 13 -R "@RG\tID:${sample}\tPL:ILLUMINA\tSM:${sample}" \
     "${ref}" \
     "${data}/${sample}.cleaned_1.fastq.gz" \
     "${data}/${sample}.cleaned_2.fastq.gz" | \
-samtools sort -@ 4 -o "${aligned}/${sample}_paired.bam"
+samtools sort -@ 5 -o "${aligned}/${sample}_paired.bam"
 
 #Enviroment 2: GATK
 conda activate gatk_env
@@ -59,8 +60,8 @@ echo "------------------------------------"
 gatk --java-options "${JAVA_OPTS}" MarkDuplicatesSpark \
     -I "${aligned}/${sample}_paired.bam" \
     -O "${aligned}/${sample}_sort_dedup.bam" \
-    --temp-dir "${tmp_dir}" \
-    --spark-master "local[8]" #local threads 
+    --tmp-dir "${tmp_dir}" \
+    --conf spark.local.dir="${tmp_dir}"
 
 gatk SetNmMdAndUqTags \
     -I "${aligned}/${sample}_sort_dedup.bam" \
@@ -183,7 +184,7 @@ echo "--------------"
 gatk MergeVcfs \
     -I "${results}/filtered_snps.vcf" \
     -I "${results}/filtered_indels.vcf" \
-    -O "${results}/merge_${sample}.vcf"
+    -O "${results}/merge_to_exomiser_FINAL_${sample}.vcf"
 
 
 echo "------------------------"
@@ -194,14 +195,17 @@ echo "------------------------"
 
 gatk --java-options "${JAVA_OPTS}" VariantAnnotator \
     -R "${ref}" \
-    -V "${results}/merge_${sample}.vcf" \
+    -V "${results}/merge_to_exomiser_FINAL_${sample}.vcf" \
     --dbsnp "${snpdb}" \
     -O "${results}/merge_annotated_${sample}.vcf"
 
 bcftools view -H -f PASS -i 'ID!="."' "${results}/merge_annotated_${sample}.vcf" | \
     wc -l > "${stats_vcf}/reporte_SNPs_INDELs.txt"
 
-bcftools stats -s - "${results}/merge_${sample}.vcf" > \
+bcftools stats -s - "${results}/merge_to_exomiser_FINAL_${sample}.vcf" > \
     "${stats_vcf}/all_stats${sample}.vchk"
 
-plot-vcfstats -p "${stats_vcf}" "${stats_vcf}/all_stats${sample}.vchk"; done 
+plot-vcfstats -p "${stats_vcf}" "${stats_vcf}/all_stats${sample}.vchk"
+
+# Deleting temporal directory
+rm -rf "${tmp_dir}"
