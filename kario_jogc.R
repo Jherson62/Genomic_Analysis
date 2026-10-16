@@ -7,7 +7,7 @@ library(Biobase)
 library(QDNAseq.hg19)
 
 # Directories
-setwd("~/Documents/Bioinformatica/")
+setwd("../Documents/Bioinformatica/PGTA_RUNS/")
 bam_folder <- "RUN38/bamFiles/"
 output_dir <- "RUN38/karyos/"
 bin_size <- 1000 # 1 Mb
