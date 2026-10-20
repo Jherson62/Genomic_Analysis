@@ -5,14 +5,15 @@
 library(QDNAseq)
 library(Biobase)
 library(QDNAseq.hg19)
+library(tidyverse)
 
 # Directories
-setwd("../Documents/Bioinformatica/PGTA_RUNS/")
-bam_folder <- "RUN38/bamFiles/"
-output_dir <- "RUN38/karyos/"
+setwd("~/Documents/Bioinformatica/PGTA_RUNS/")
+bam_folder <- "RUN42ab/bamFiles/"
+output_dir <- "RUN42ab/karyos/"
 bin_size <- 1000 # 1 Mb
 
-# Crear si no existe
+# Crear directorio
 if(!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -27,6 +28,7 @@ sample_names <- gsub(
   ".bam", "",
   basename(bamfiles)
 )
+cat(sample_names, sep = "\n")
 
 # Bins
 bins <- getBinAnnotations(
@@ -43,36 +45,43 @@ read_counts <- binReadCounts(
 
 # Filtrado y correcciones -------------------------------------------------
 # Por default filtra sexuales y MT
+set.seed(124)
 read_counts <- applyFilters(
   read_counts
 )
 
 # estima la correccion
+set.seed(124)
 read_counts <- estimateCorrection(
   read_counts
 )
 
 # Aplica a todos los cromosomas (incluido sexual)
+set.seed(124)
 read_counts <- applyFilters(
   read_counts,
   chromosomes = NA
 )
 
 # Aplicar correccion GC/mapeabilidad
+set.seed(124)
 read_counts <- correctBins(
   read_counts
 )
 
 # Outliers
+set.seed(124)
 read_counts <- normalizeBins(read_counts)
 copy_numbers_smooth <- smoothOutlierBins(read_counts)
 
 # Segmentacion ------------------------------------------------------------
+set.seed(124)
 copy_numbers_segmented <- segmentBins(
   copy_numbers_smooth,
   transformFun = "sqrt"
 )
 
+set.seed(124)
 copy_numbers_segmented <- normalizeSegmentedBins(
   copy_numbers_segmented
 )
@@ -237,6 +246,9 @@ for (i in seq_along(sample_names)) {
   )
 }
 
+
+# Tabla resultados --------------------------------------------------------
+
 write.table(
   summary_table, sep = "\t",
   file = paste0(output_dir, "PGTA_summary_results.tsv"),
@@ -268,7 +280,148 @@ for (i in seq_along(sample_names)) {
 
 dev.off()
 
+# Mosaicismo ------------------------------------------------------
 
+# 2n = 1
+seg_data <- assayDataElement(copy_numbers_called, "segmented")
+bin_info <- fData(copy_numbers_called)
+
+mosaico_data <- cbind(
+  data.frame("chromosome" = bin_info$chromosome),
+  seg_data
+)
+
+data <- mosaico_data |> 
+  pivot_longer(cols = 2:dim(mosaico_data)[2],
+               names_to = "Barcode",
+               values_to = "Bins") |> 
+  dplyr::mutate(
+    twobins = 2 * Bins
+  ) |> 
+  dplyr::group_by(Barcode, chromosome) |> 
+  dplyr::summarise(
+    mean_bins = mean(twobins, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+sex_info <- data |> 
+  dplyr::filter(chromosome == "Y") |> 
+  dplyr::mutate(sex = ifelse(mean_bins > 1, "XY", "XX")) |> 
+  select(Barcode, sex)
+
+data_classified <- data |> 
+  left_join(sex_info, by = "Barcode") |> 
+  dplyr::mutate(
+    expected_copies = case_when(
+      chromosome %in% as.character(1:22) ~ 2,
+      sex == "XX" & chromosome == "X" ~ 2,
+      sex == "XX" & chromosome == "Y" ~ 0,
+      sex == "XY" & chromosome %in% c("X", "Y") ~ 1
+    ),
+    porcentaje = (mean_bins - expected_copies) * 100,
+    clasificacion = case_when(
+      sex == "XX" & chromosome == "Y" ~ "Ruido",
+      
+      porcentaje >= 80 ~ "Ganancia completa",
+      porcentaje <= -80 ~ "Perdida completa",
+      
+      porcentaje >= 50 & porcentaje < 80 ~ "Mosaico alto (Ganancia)",
+      porcentaje <= -50 & porcentaje > -80 ~ "Mosaico alto (Perdida)",
+      
+      porcentaje >= 20 & porcentaje < 50 ~ "Mosaico bajo (Ganancia)",
+      porcentaje <= -20 & porcentaje > -50 ~ "Mosaico bajo (Perdida)",
+      
+      TRUE ~ "Euploide"
+    )
+  )
+
+# Solo valores de media
+data_wide <- data |> 
+  pivot_wider(
+    names_from = Barcode,
+    values_from = mean_bins
+  )
+
+data_wide <- data_wide |> 
+  dplyr::mutate(
+    chromosome = factor(chromosome,
+                        levels = c(as.character(1:22), "X", "Y"))
+  ) |> 
+  arrange(chromosome)
+
+# Solo porcentajes
+data_wide <- column_to_rownames(data_wide, var = "chromosome")
+porcentaje <- (data_wide - 2)*100
+porcentaje <- rownames_to_column(porcentaje, var = "chromosome")
+
+write.table(
+  porcentaje,
+  sep = "\t",
+  file = paste0(output_dir, "QDNAseq_mosaic_percentaje.tsv"),
+  row.names = FALSE
+)
+
+# Heat Map Categorico
+library(ggplot2)
+
+data_classified <- data_classified |>
+  mutate(chromosome = factor(
+    chromosome, levels = c(as.character(1:22), "X", "Y")
+  ))
+
+colores_pgta <- c(
+  "Ganancia completa"       = "red", 
+  "Mosaico alto (Ganancia)" = "#D6604D",
+  "Mosaico bajo (Ganancia)" = "#F4A582",
+  "Euploide"                = "#A6DBA0",
+  "Mosaico bajo (Perdida)"  = "#92C5DE", 
+  "Mosaico alto (Perdida)"  = "#4393C3",
+  "Perdida completa"        = "blue",
+  "Ruido"                   = "white" 
+)
+
+# 3. Generar el Heatmap
+grafico_pgta <- ggplot(data_classified, 
+                       aes(x = chromosome,
+                           y = Barcode,
+                           fill = clasificacion)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  scale_fill_manual(
+    values = colores_pgta, 
+    name = NULL,
+    drop = FALSE
+  ) +
+  theme_minimal(base_size = 15) +
+  labs(
+    title = paste("PGT-A" , substr(bam_folder, 1, 5)),
+    x = "Cromosoma",
+    y = "Muestra"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid = element_blank(),
+    axis.text.x = element_text(angle = 0, hjust = 0.5),
+    legend.position = "bottom",
+    legend.title = element_blank()
+  ) +
+  coord_fixed(ratio = 1) 
+
+print(grafico_pgta)
+
+ggsave(
+  filename = paste0(output_dir, "Heatmap_PGTA.png"),
+  plot = grafico_pgta,
+  width = 16, 
+  height = 8, 
+  dpi = 300,
+  bg = "white"
+)
+
+cat("\n---------------------------------\n")
+cat("ANÁLISIS FINALIZADO\n")
+cat("Resultados guardados en:\n")
+cat(output_dir,"\n")
+cat("---------------------------------\n")
 
 
 
