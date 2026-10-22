@@ -13,8 +13,8 @@ resources="$HOME/Documents/Exomas/recursos"
 ref="${resources}/Homo_sapiens_assembly38.fasta"
 snpdb="${resources}/Homo_sapiens_assembly38.dbsnp138.vcf"
 
-for i in $(seq -w 4 4); do
-	sample="GEN2600"
+for i in $(seq -w 1); do
+	sample="EX26650"
 
 	# Directories
 	data="$HOME/Documents/Exomas/${sample}/data"
@@ -185,11 +185,23 @@ for i in $(seq -w 4 4); do
 
 	# Deleting intermediated files
 	rm "${aligned}/${sample}_paired.bam"
+
     	rm "${aligned}/${sample}_sort_dedup.bam"
+    	rm "${aligned}/${sample}_sort_dedup.bam.bai"
+
     	rm "${aligned}/${sample}_sort_dedup_tag_bqsr.bam"
+    	rm "${aligned}/${sample}_sort_dedup_tag_bqsr.bam.bai"
+
     	rm "${results}/raw_snps.vcf"
+    	rm "${results}/raw_snps.vcf.idx"
+
 	rm "${results}/filtered_snps.vcf"
+	rm "${results}/filtered_snps.vcf.idx"
+
 	rm "${results}/raw_indels.vcf"
+	rm "${results}/raw_indels.vcf.idx"
+
 	rm "${results}/filtered_indels.vcf"
+	rm "${results}/filtered_indels.vcf.idx"
 done
 

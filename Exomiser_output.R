@@ -1,24 +1,11 @@
 # Packages ----------------------------------------------------------------
 library(tidyverse)
 
-setwd("/home/jherson/Documentos/Fertility/Exomas/exomiser_result")
+setwd("~/Documents/Exomas/exomiser_output/")
 
 ###################
-id <- "EX2604"
+id <- "EX26650"
 ###################
-
-genes <- read.table(
-  file = sprintf("%s_out/%s_exomiser.genes.tsv", id, id),
-  sep = "\t",
-  comment.char = "",
-  quote = "",
-  header = TRUE,
-  fill = TRUE,
-  na.strings = "NA",
-  check.names = FALSE,
-  stringsAsFactors = FALSE
-)
-colnames(genes)[1] <- gsub("^#", "", colnames(genes)[1])
 
 variants <- read.table(
   file = sprintf("%s_out/%s_exomiser.variants.tsv", id, id),

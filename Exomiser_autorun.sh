@@ -1,6 +1,9 @@
 #!/bin/bash
-
 set -eou pipefail
+
+# Entorno NGStools
+source "$HOME/anaconda3/etc/profile.d/conda.sh"
+conda activate NGStools
 
 # Directorios
 exomiser_input="$HOME/Documents/Exomas/exomiser_input"
@@ -14,8 +17,8 @@ template="$HOME/Documents/Exomas/templates/analysis-exome-modified.yml"
 # Entramos a la carpeta
 cd "$HOME/exomiser-cli-15.1.0"
 
-for i in $(seq -w 1 4); do 
-  sample="EX260${i}"
+for i in $(seq -w 1); do 
+  sample="EX26650"
   
   echo ${sample}
   
